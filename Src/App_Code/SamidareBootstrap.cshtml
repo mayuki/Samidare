@@ -1,0 +1,180 @@
+﻿@using Samidare
+@using Samidare.Model
+@using Samidare.ViewModel
+
+@functions
+{
+    /// <summary>
+    /// 指定した設定でSamidareを起動して、リクエストされたURLに合わせてページを出力します。
+    /// </summary>
+    /// <param name="context"></param>
+    /// <returns></returns>
+}
+@helper Start(SamidareContext context)
+{
+    // コンテキスト初期化
+    context.Initialize(Server.MapPath(VirtualPath));
+    
+    // 後ろが指定されていなく(PATH_INFO的なものが空)、/ で終わっていなかったらリダイレクトする(ディレクトリ的に見せる)
+    if (!UrlData.Any() && !Request.Url.AbsolutePath.EndsWith("/"))
+    {
+        Response.Redirect(Request.Url.AbsolutePath + "/");
+        return;
+    }
+
+    // ディスパッチ
+    var dispatchResult = context.Engine.Dispatcher(UrlData.Any() ? "/" + String.Join("/", UrlData) : "/");
+    
+    // ひとつもエントリがないときは404
+    if (dispatchResult == null || !dispatchResult.Entries.Any())
+    {
+        PageContext.Page.Layout = null;
+        Response.StatusCode = 404;
+        Response.ClearContent(); // IISに任せる
+        Response.TrySkipIisCustomErrors = false;
+        Response.End();
+        //Response.Write("<!DOCTYPE html><title>Not Found</title><h1>Not Found</h1>");
+        return;
+    }
+    @Render(dispatchResult, context, PageContext)
+}
+
+@functions
+{
+
+    /// <summary>
+    /// ページをレンダリングします
+    /// </summary>
+    /// <param name="dispatchResult"></param>
+    /// <param name="context"></param>
+    /// <param name="parentPageContext"></param>
+    /// <returns></returns>
+    public static HelperResult Render(RouteDispatchResult dispatchResult, SamidareContext context, WebPageContext parentPageContext)
+    {
+        var entriesPaging = Paging<Entry>.CreateFromParameters(dispatchResult.Entries, context.ShowEntriesCount, Request.QueryString);
+
+        // Last-Modified
+        Response.Headers.Add("Last-Modified", entriesPaging.Items[0].ModifiedAt.ToUniversalTime().ToString("r"));
+
+        // ViewModel
+        var viewModel = (dispatchResult.ViewData == null)
+            ? new EntriesViewModel()
+            : Activator.CreateInstance(typeof (EntriesViewModel<>).MakeGenericType(dispatchResult.ViewData.GetType())) as EntriesViewModel;
+        viewModel.Context = context;
+        viewModel.Engine = context.Engine;
+        viewModel.Entries = entriesPaging.Items;
+        viewModel.Paging = entriesPaging;
+        viewModel.ParentPageContext = parentPageContext;
+        viewModel.Data = dispatchResult.ViewData;
+
+        parentPageContext.PageData["ViewModel"] = viewModel;
+        parentPageContext.Page.Layout = null;
+        
+        var layout = String.IsNullOrWhiteSpace(context.DefaultLayout)
+            ? Path.Combine(context.DataDirectory, "Templates", context.TemplatesSetName, "Layout.cshtml")
+            : context.DefaultLayout;
+
+        // Render Page
+        var templatePath = Path.Combine(context.DataDirectory, "Templates", context.TemplatesSetName, dispatchResult.ViewName + ".cshtml");
+        var renderedPage = parentPageContext.Page.RenderPage(Path.Combine(context.DataDirectory, "Templates", "_Start.cshtml"), new { Template = templatePath, Layout = layout, ViewModel = viewModel });
+
+        return renderedPage;
+    }
+}
+
+@functions
+{
+    /// <summary>
+    /// 静的生成してそのビューを表示します。
+    /// </summary>
+    /// <returns></returns>
+}
+@helper GenerateView(String outputDirectory, SamidareContext ctx)
+{
+    <title>Samidare: Generator</title>
+    <style>
+        html { }
+        body { font-family: 'Segoe UI', 'Arial', 'Helvetica', 'Meiryo', sans-serif; width: 90%; margin: auto; }
+        article h1, section h1, h2 { border-bottom: 1px solid #f0f0f0; padding-bottom: 0.25em; }
+        pre { font-family: 'Consolas', monospace; padding: 1em; background-color: #f7f7f7; overflow: auto; }
+        a { text-decoration: none; }
+        a:link { color: rgba(66, 124, 169, 1); }
+
+        body > header > h1 { margin: 1.5em 0; }
+        body > header > h1 > a { color: #000; }
+        body > footer { margin-top: 1em; border-top: 2px solid #ccc; text-align: right; }
+        body > footer li { list-style-position: inside; }
+            
+        .paging { margin: 2em 0; }
+        .paging::after { content: ''; display: block; clear: both; }
+        .paging .paging_anchor { display: inline-block; padding: 0.5em; background-color: #555; color: #fff; }
+        .paging .paging_anchor-Newer { float: left; }
+        .paging .paging_anchor-Newer::before { content: '<'; }
+        .paging .paging_anchor-Older { float: right; }
+        .paging .paging_anchor-Older::after { content: '>'; }
+
+        .entry { margin: 2em 0; }
+        .entry > header > h1 { border: none; margin-bottom: 0.5rem; }
+        .entry > header > h1 a { color: #000; }
+        .entry_metadata { margin: 0; padding: 0.5em 1em; background-color: #f7f7f7; border: 1px solid #f0f0f0; border-radius: 4px; font-size: 0.85em; color: #555; }
+        .entry_content { margin-left: 2em; }
+    </style>
+
+    <h1>Samidare: Generator</h1>
+
+    <dl>
+        <dt>SiteRoot</dt>
+        <dd>@ctx.SiteRoot</dd>
+        <dt>DataDirectory</dt>
+        <dd>@ctx.DataDirectory</dd>
+    </dl>
+
+    <p>以下のファイルがディレクトリ @outputDirectory に生成されました。</p>
+    <ul>
+        @foreach (var outputPath in Generate(outputDirectory, ctx))
+        {
+            <li>@outputPath</li>
+        }
+    </ul>
+}
+
+@functions
+{
+    /// <summary>
+    /// ページを静的生成します。
+    /// </summary>
+    /// <returns></returns>
+    public static String[] Generate(String outputDirectory, SamidareContext ctx)
+    {
+        ctx.Initialize(Server.MapPath(VirtualPath));
+        ctx.IsStaticGeneration = true;
+
+        var generatePages = ctx.Engine.EntryIndexes["Path"]
+            .Select(x => new
+            {
+                Path = x.Key,
+                IsDirectoryIndex = (!x.Any(x2 => x2.Path == x.Key)) && (x.Key == "" || !x.Key.Contains("/")) // パスと同じものを含んでいなくて、空文字ではないまたはスラッシュを含んでいない
+            }).Concat(new [] { new { Path = "", IsDirectoryIndex = true }});
+        if (!Directory.Exists(outputDirectory))
+        {
+            Directory.CreateDirectory(outputDirectory);
+        }
+
+        return generatePages.Select(page =>
+        {
+            var pagePath = page.IsDirectoryIndex ? Path.Combine(page.Path, "index.html") : page.Path.Replace('/', '\\');
+            var outputPath = Path.Combine(outputDirectory, pagePath);
+            if (!Directory.Exists(Path.GetDirectoryName(outputPath)))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+            }
+
+            var rendered = SamidareBootstrap.Render(ctx.Engine.Dispatcher("/" + page.Path), ctx, PageContext);
+            var renderedHtml = rendered.ToHtmlString();
+
+            File.WriteAllText(outputPath, renderedHtml);
+
+            return pagePath;
+        }).ToArray();
+    }
+}

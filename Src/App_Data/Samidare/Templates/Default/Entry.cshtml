@@ -1,0 +1,23 @@
+﻿@using Samidare.ViewModel
+@* ReSharper disable PossibleNullReferenceException *@
+@{
+    var ViewModel = PageData["ViewModel"] as EntriesViewModel;
+    var Entry = ViewModel.Entries.First();
+    ViewModel.Title = Entry.Title;
+}
+
+<article class="entry">
+    <header>
+        <h1>@Entry.Title</h1>
+        <p class="entry_metadata">
+            Created at <a href="@(ViewModel.Context.SiteRoot)/@(Entry.Path)">@Entry.CreatedAt.ToShortDateString()</a> |
+            Tag: @foreach (var tag in Entry.Metadata["Tags"] as String[])
+                    { <a href="@ViewModel.Context.SiteRoot/Tag/@tag">@tag</a><text> </text> }
+        </p>
+    </header>
+
+    @* ----- Body -------------------------------------------------- *@
+    <div class="entry_content">
+        @Html.Raw(Entry.Content)
+    </div>
+</article>

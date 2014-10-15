@@ -1,0 +1,27 @@
+﻿@{
+    var ctx = new Samidare.SamidareContext(
+        siteRoot: "/Index.cshtml",
+        dataDirectory: @"~\App_Data\Samidare",
+        engineCreated: (engine) =>
+                       {
+                           // Indexer/PostProcessorを足したいときはここで
+                           //engine.MetadataConverters.Add("X-Samidare-IndexSample", value => value);
+                           //engine.Indexers.Add("X-Samidare-IndexSample",
+                           //    xs => xs.Where(x => x.Metadata.ContainsKey("X-Samidare-IndexSample"))
+                           //            .ToLookup(k => k.Metadata["X-Samidare-IndexSample"] as String, v => v));
+                           (engine.Formatters[".md"] as Samidare.Builtin.Formatters.MarkdownFormatter).EnableServerSideSyntaxHighlight = false;
+                       }
+        )
+        {
+            Name = "Samidare",
+            Description = "Samidare Sample Site",
+            DisableEngineCache = true
+        };
+
+    ctx.Initialize(Server.MapPath(VirtualPath));
+
+    var dispatchResult = ctx.Engine.Dispatcher("/");
+    var result = SamidareBootstrap.Render(dispatchResult, ctx, PageContext);
+    
+    @result.ToHtmlString()
+}

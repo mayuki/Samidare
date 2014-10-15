@@ -1,0 +1,28 @@
+@using Samidare
+@using Samidare.ViewModel
+@{
+    var ViewModel = PageData["ViewModel"] as EntriesViewModel;
+    ViewModel.ParentPageContext.Page.Layout = null;
+
+    Response.ContentType = "application/rss+xml";
+    
+}<rss version="2.0">
+    <channel>
+        <title>@ViewModel.Context.Name</title>
+        <link>@(ViewModel.Context.SiteRoot)/</link>
+        <description>@ViewModel.Context.Description</description>
+
+        @foreach (var entry in ViewModel.Entries)
+        {
+            <item>
+                <title>@entry.Title</title>
+                <pubDate>@entry.CreatedAt.ToUniversalTime().ToString("s")</pubDate>
+                @Html.Raw("<link>")@(ViewModel.Context.SiteRoot.TrimEnd('/') + "/" + entry.Path)@Html.Raw("</link>")
+                <description><![CDATA[
+                    @Html.Raw(entry.Content)
+                ]]></description>
+            </item>
+        }
+
+    </channel>
+</rss>

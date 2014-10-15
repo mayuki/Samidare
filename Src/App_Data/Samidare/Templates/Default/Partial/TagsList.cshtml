@@ -1,0 +1,15 @@
+﻿@using Samidare.ViewModel
+@* ReSharper disable PossibleNullReferenceException *@
+@{
+    var ViewModel = PageData["ViewModel"] as EntriesViewModel;
+}
+
+<section>
+    <h1>Tags</h1>
+    <ul>
+        @foreach (var tag in ViewModel.EntryIndexes["Tags"].OrderBy(x => x.Key))
+        {
+            <li><a href="@ViewModel.Context.SiteRoot/Tag/@tag.Key">@tag.Key (@tag.Count())</a></li>
+        }
+    </ul>
+</section>

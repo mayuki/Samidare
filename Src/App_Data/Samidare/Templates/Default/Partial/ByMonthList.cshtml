@@ -1,0 +1,15 @@
+﻿@using Samidare.ViewModel
+@* ReSharper disable PossibleNullReferenceException *@
+@{
+    var ViewModel = PageData["ViewModel"] as EntriesViewModel;
+}
+<section>
+    <h1>By Month</h1>
+    <ul>
+        @foreach (var month in ViewModel.EntryIndexes["ByMonth"].OrderBy(x => x.Key))
+        {
+            <li><a href="@ViewModel.Context.SiteRoot/@month.Key/">@month.Key (@month.Count())</a></li>
+            @*<li><a href="@ViewModel.Context.SiteRoot/@month.Key/">@month.First().CreatedAt.ToString("yyyy-MM") (@month.Count())</a></li>*@
+        }
+    </ul>
+</section>

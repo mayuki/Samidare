@@ -1,0 +1,43 @@
+﻿@using Samidare.ViewModel
+@* ReSharper disable PossibleNullReferenceException *@
+@{
+    var ViewModel = PageData["ViewModel"] as EntriesViewModel;
+    var viewModel2 = ViewModel as EntriesViewModel<FilteredViewModel>;
+    ViewModel.Title = (viewModel2 == null) ? null : viewModel2.Data.FilteredBy + ": " + viewModel2.Data.FilteredByValue;
+}
+
+@if (ViewModel is EntriesViewModel<FilteredViewModel>)
+{
+    <h1>Filtered by @viewModel2.Data.FilteredBy: @viewModel2.Data.FilteredByValue</h1>
+}
+
+@* ----- Entries -------------------------------------------------- *@
+@foreach (var entry in ViewModel.Entries)
+{
+    <article class="entry">
+        <header>
+            <h1><a href="@(ViewModel.Context.SiteRoot)/@(entry.Path)">@entry.Title</a></h1>
+            <p class="entry_metadata">
+                Created at <a href="@(ViewModel.Context.SiteRoot)/@(entry.Path)">@entry.CreatedAt.ToShortDateString()</a> |
+                Tag: @foreach (var tag in entry.Metadata["Tags"] as String[])
+                        { <a href="@ViewModel.Context.SiteRoot/Tag/@tag">@tag</a><text> </text> }
+            </p>
+        </header>
+        @* ----- Body -------------------------------------------------- *@
+        <div class="entry_content">
+            @Html.Raw(entry.Content)
+        </div>
+    </article>
+}
+
+@* ----- Paging -------------------------------------------------- *@
+<nav class="paging">
+    @if (ViewModel.Paging.HasPrevious)
+    {
+        <a class="paging_anchor paging_anchor-Newer" rel="prev" href="?page=@(ViewModel.Paging.CurrentPage - 1)">Newer</a>
+    }
+    @if (ViewModel.Paging.HasNext)
+    {
+        <a class="paging_anchor paging_anchor-Older" rel="next" href="?page=@(ViewModel.Paging.CurrentPage + 1)">Older</a>
+    }
+</nav>

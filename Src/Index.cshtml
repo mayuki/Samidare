@@ -1,0 +1,30 @@
+﻿@SamidareBootstrap.Start(new Samidare.SamidareContext(
+        // サイト(ページ)のルートを指定します。.cshtml の名前に合わせる必要があります(例えば /Blog.cshtml の場合 /Blog となります)
+        siteRoot: "/Index",
+        
+        // エントリーやテンプレートなどのデータが保存されているディレクトリを指定します
+        dataDirectory: @"~\App_Data\Samidare",
+        
+        // SamidareEngineが生成されたとき(アプリケーション起動時またはエントリ更新時)に一度だけ呼び出される処理を指定します
+        engineCreated: (engine) =>
+                             {
+                                 // Indexer/PostProcessorを足したいときはここで
+                                 //engine.MetadataConverters.Add("X-Samidare-IndexSample", value => value);
+                                 //engine.Indexers.Add("X-Samidare-IndexSample",
+                                 //    xs => xs.Where(x => x.Metadata.ContainsKey("X-Samidare-IndexSample"))
+                                 //            .ToLookup(k => k.Metadata["X-Samidare-IndexSample"] as String, v => v));
+                                 //(engine.Formatters[".md"] as Samidare.Builtin.Formatters.MarkdownFormatter).EnableServerSideSyntaxHighlight = false;
+                             }
+    )
+    {
+        Name = "Samidare",
+        Description = "Samidare Sample Site",
+        
+        // テンプレートのセットの名前を指定します
+        // TemplatesSetName = "SampleTemplate1",
+        
+        // エンジンのキャッシュを無効にするかどうかを指定します
+        // コードの変更を伴うテストなどをする場合にはtrueにするとキャッシュされなくなります
+        // DisableEngineCache = true
+    }
+)
