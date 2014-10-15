@@ -1,5 +1,6 @@
 # Application Specific
 *.pubxml
+Src/App_Data/Samidare/Static
 
 # Build Folders (you can keep bin if you'd like, to store dlls and pdbs)
 [Bb]in/
