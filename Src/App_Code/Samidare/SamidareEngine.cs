@@ -79,11 +79,11 @@ namespace Samidare
 
         /// <summary>
         /// キャッシュをセットするための処理を設定します。
-        /// 第一引数はデータディレクトリ(キャッシュのキー)、第二引数は開始されたメインページのパス
+        /// 第一引数はキャッシュのキー、第二引数はデータディレクトリ、第三引数は開始されたメインページのパス
         /// </summary>
-        public static Action<String, String> CacheSetStrategy { get; set; }
+        public static Action<String, String, String> CacheSetStrategy { get; set; }
         /// <summary>
-        /// キャッシュが切れているかどうかを取得する処理を設定します。
+        /// キャッシュのキーをもとにキャッシュが切れているかどうかを取得する処理を設定します。
         /// </summary>
         public static Func<String, Boolean> CacheExpiredStrategy { get; set; }
 
@@ -97,13 +97,14 @@ namespace Samidare
         public static SamidareEngine GetInstance(String entryPointPagePath, String rootDirectory, Action<SamidareEngine> engineCreated, Boolean disableCache)
         {
             // キャッシュ切れてたら作りなおす
-            if (CacheExpiredStrategy == null || CacheExpiredStrategy(rootDirectory) || disableCache)
+            var cacheKey = entryPointPagePath + ":" + rootDirectory;
+            if (CacheExpiredStrategy == null || CacheExpiredStrategy(cacheKey) || disableCache)
             {
                 SamidareEngine oldEngine;
-                _engines.TryRemove(rootDirectory, out oldEngine);
+                _engines.TryRemove(cacheKey, out oldEngine);
             }
 
-            return _engines.GetOrAdd(rootDirectory, _ =>
+            return _engines.GetOrAdd(cacheKey, _ =>
                                                           {
                                                               var engine = new SamidareEngine(rootDirectory);
                                                               if (engineCreated != null)
@@ -115,7 +116,7 @@ namespace Samidare
 
                                                               if (CacheSetStrategy != null)
                                                               {
-                                                                  CacheSetStrategy(rootDirectory, entryPointPagePath);
+                                                                  CacheSetStrategy(cacheKey, rootDirectory, entryPointPagePath);
                                                               }
                                                               return engine;
                                                           });
@@ -123,8 +124,8 @@ namespace Samidare
 
         static SamidareEngine()
         {
-            CacheSetStrategy = (rootDirectory, entryPointPagePath) => HttpContext.Current.Cache.Add(
-                "Samidare.EntriesCache:" + rootDirectory,
+            CacheSetStrategy = (cacheKey, rootDirectory, entryPointPagePath) => HttpContext.Current.Cache.Add(
+                "Samidare.EntriesCache:" + cacheKey,
                 new Object(),
                 new System.Web.Caching.CacheDependency(
                     Directory.GetDirectories(rootDirectory, "*", SearchOption.AllDirectories)
@@ -136,7 +137,7 @@ namespace Samidare
                 System.Web.Caching.CacheItemPriority.Low,
                 null
             );
-            CacheExpiredStrategy = (rootDirectory) => HttpContext.Current.Cache.Get("Samidare.EntriesCache:" + rootDirectory) == null;
+            CacheExpiredStrategy = (cacheKey) => HttpContext.Current.Cache.Get("Samidare.EntriesCache:" + cacheKey) == null;
         }
 
         public SamidareEngine(String rootDirectory)
