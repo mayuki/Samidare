@@ -1,4 +1,5 @@
 ﻿@{
     Layout = Model.Layout;
+    Model.ViewModel.ParentPageContext = this.PageContext;
 }
 @RenderPage(Model.Template, Model)
